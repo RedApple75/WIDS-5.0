@@ -16,3 +16,13 @@ venv/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Ignore Data Files
+*.npz
+*.pkl
+*.h5
+*.csv
+
+# Ignore trained models
+*.joblib
+models/
