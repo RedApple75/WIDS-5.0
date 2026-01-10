@@ -1,123 +1,112 @@
 # Plant Disease Classification Analysis
 
-This project analyzes a dataset of plant leaf images to classify various species and disease conditions. The workflow progresses from Exploratory Data Analysis (EDA) to implementing shallow machine learning models and hierarchical classification strategies.
+This project analyzes a dataset of plant leaf images to classify various species and disease conditions. The workflow progresses from Exploratory Data Analysis (EDA) to implementing Convolutional Neural Networks and Transfer Learning.
 
-## 1. Dataset Insights (EDA)
+## Exploratory Data Analysis
 
-The dataset consists of images representing different plant species and their health status.
+We analyzed the dataset to understand class distributions and image quality before training. The dataset is divided into three categories: Color, Grayscale, and Segmented.
 
-**Key Statistics:**
-* **Total Images:** 54,305
-* **Total Classes:** 38 (Specific Plant + Disease combinations)
-* **Input Resolution:** Resized to 64x64 pixels
-* **Color Channels:** 3 (RGB)
+### Class Distribution
+The dataset contains 38 classes with a total distribution shown below. There is a significant class imbalance, with **Orange___Haunglongbing** having the most samples and **Potato___healthy** having the fewest.
 
-**Class Distribution:**
-The dataset is highly imbalanced. The majority class (Orange Haunglongbing) contains significantly more samples than the minority class (Potato healthy).
+**Top 5 Classes:**
+- Orange___Haunglongbing_(Citrus_greening): 5507
+- Tomato___Tomato_Yellow_Leaf_Curl_Virus: 5357
+- Soybean___healthy: 5090
+- Peach___Bacterial_spot: 2297
+- Tomato___Bacterial_spot: 2127
 
+**Bottom 5 Classes:**
+- Raspberry___healthy: 371
+- Peach___healthy: 360
+- Apple___Cedar_apple_rust: 275
+- Potato___healthy: 152
 
+![Class Frequency Plot](assets/class_frequencies.png)
 
-*Figure 1: Distribution of images across the 38 classes, highlighting significant imbalance.*
+This imbalance (ratio of approx. 36:1) suggests the need for augmentation or class weighting to prevent bias towards the majority classes.
 
-## 2. Data Representation
+### Image Specifications
+All images across the three folders (Color, Grayscale, Segmented) are standardized to the same dimensions.
+- **Dimensions:** 256x256 pixels
+- **Color:** 3 channels (RGB)
+- **Grayscale:** 1 channel
+- **Segmented:** 3 channels (masked background)
 
-Before feeding images into shallow models, we flatten the 2D image matrices into 1D vectors.
+### Blur Detection (Laplacian Variance)
+To filter out low-quality data, we calculated a blur score using the variance of the Laplacian. This method utilizes a kernel to approximate the second derivative of the image, where high variance corresponds to sharp edges and low variance corresponds to blurring.
 
-For an image with height $H$, width $W$, and channels $C$, the input vector $x$ is:
+The Laplacian $L$ of an image $I$ is calculated via convolution with a kernel $K$:
 
-$$
-x \in \mathbb{R}^{H \times W \times C}
-$$
+$$L(x,y) = I(x,y) * K$$
 
-With our dimensions ($64 \times 64 \times 3$):
+Where the kernel $K$ is typically:
 
-$$
-x \in \mathbb{R}^{12288}
-$$
+$$K = \begin{bmatrix} 0 & 1 & 0 \\ 1 & -4 & 1 \\ 0 & 1 & 0 \end{bmatrix}$$
 
-## 3. Model Architectures
+The sharpness score $S$ is the variance of the response:
 
-### Support Vector Machine (SVM)
+$$S = \frac{1}{N} \sum_{i=1}^{N} (L_i - \mu_L)^2$$
 
-We use an SVM to find a linear boundary (hyperplane) that separates the classes.
+### Blur Report
+We computed the average sharpness scores for each dataset category.
 
+![Blur Sharpness Plot](assets/sharpness_plot.png)
 
+**Dataset Statistics:**
+- **Global Pixel Mean:** 0.52
+- **Global Pixel Std:** 0.15
 
-**The Hyperplane:**
-For a binary case, the decision boundary is defined by weights $w$ and bias $b$:
+**Average Laplacian Variance (Sharpness):**
+- **Color:** 2483.42
+- **Grayscale:** 1825.19
+- **Segmented:** 2875.98
 
-$$
-w^T x + b = 0
-$$
+The segmented images display the highest variance (2875.98) due to the high-contrast artificial edges created between the leaf and the black background. Grayscale images have the lowest variance (1825.19) as the conversion reduces the high-frequency information present in color channels.
 
-**Optimization (Hinge Loss):**
-The goal is to maximize the margin between classes while minimizing errors. We minimize the cost function $J(w, b)$:
+## Shallow Models Baseline
 
-$$
-\min_{w, b} \frac{1}{2} ||w||^2 + C \sum_{i=1}^{n} \max(0, 1 - y_i(w^T x_i + b))
-$$
+To establish a baseline before deep learning, we evaluated three classical machine learning approaches.
 
-* $||w||^2$: Regularization term (keeps weights small).
-* $C$: Penalty parameter (controls trade off between smooth boundary and classifying training points correctly).
-* $\max(0, ...)$: The Hinge Loss, which is zero if the point is correctly classified outside the margin.
+**Random Forest Classifier (RFC)**
+This model was used for its robustness to overfitting, employing an ensemble of decision trees to capture non-linear feature interactions without heavy tuning.
 
-### Random Forest Classifier
+**SGD Classifier**
+We tested a linear classifier optimized via stochastic gradient descent. This provided a computationally efficient benchmark for handling the high-dimensional flattened image data.
 
-The Random Forest aggregates predictions from multiple Decision Trees to reduce overfitting and capture non linear patterns.
+**Hierarchical Model**
+We implemented a two-stage classification strategy. The model first predicts the plant species (e.g., Tomato vs. Corn) and subsequently classifies the specific disease within that species, effectively breaking the complex 38-class problem into smaller, manageable tasks.
 
+## Model Architecture and Strategy
 
+To achieve high accuracy and robustness, we implemented a two-stage modeling approach. We began with a custom CNN to understand the feature complexity, followed by a Transfer Learning approach using ResNet18 to achieve production-grade performance.
 
-**Splitting Criterion:**
-At each node, the tree splits data to maximize purity. We use Gini Impurity. For a node $t$ with $K$ classes, the impurity is:
+### Stage 1: Custom CNN (Feature Learning)
+We engineered a custom Convolutional Neural Network from the ground up to establish a strong baseline. Unlike generic architectures, this model was specifically tuned to handle the high variance of plant disease patterns without relying on pre-trained weights.
 
-$$
-Gini(t) = 1 - \sum_{k=1}^{K} (p_{k})^2
-$$
+**Architecture Breakdown**
+The model consists of a 3-stage hierarchical feature extractor:
+- **Block 1 (32 Filters):** Captures low-level primitives such as leaf edges and vein structures.
+- **Block 2 (64 Filters):** Aggregates primitives into simple geometric shapes, such as circular lesion outlines.
+- **Block 3 (128 Filters):** The deepest layer, responsible for recognizing complex textures (e.g., distinguishing the "fuzzy" texture of mold from the "dry" texture of scorch).
 
-* $p_k$: The probability of a randomly chosen element belonging to class $k$.
+**Regularization and Augmentation**
+To prevent overfitting, we employed a Dropout rate of 0.5 in the fully connected layer, forcing the network to learn distributed representations. Crucially, we utilized **Geometric Invariance Augmentation** (RandomRotation and RandomHorizontalFlip). This forced the model to learn features independent of orientation, solving the issue of positional bias common in small datasets and allowing the model to generalize significantly better than standard implementations.
 
-The algorithm selects the split that maximizes the Information Gain (reduction in impurity):
+### Stage 2: Transfer Learning (ResNet18)
+To push accuracy to **99.6%**, we utilized ResNet18, a deep residual network pretrained on the ImageNet dataset.
 
-$$
-Gain = Gini(parent) - \sum_{child} \frac{N_{child}}{N_{parent}} Gini(child)
-$$
+**Why ResNet18?**
+We selected ResNet18 over deeper variants (like ResNet50) because plant disease features are primarily local and textural. An 18-layer residual network provides sufficient receptive field coverage without the computational overhead or risk of overfitting associated with deeper models. The residual connections ($y = F(x) + x$) allow gradients to flow through the network without vanishing, enabling the training of deeper feature extractors.
 
-**Ensemble Prediction:**
-For a forest of $B$ trees, the final class $\hat{y}$ is the majority vote:
+**Implementation Strategy (Discriminative Fine-Tuning)**
+We employed a two-step training process to maximize performance:
 
-$$
-\hat{y} = \text{mode} \{ T_1(x), T_2(x), ..., T_B(x) \}
-$$
+1. **Head Replacement:** We replaced the final 1000-class ImageNet layer with a 38-class linear layer specific to the PlantVillage classes. The input to this layer is a 512-dimensional feature vector derived from the global average pooling of the final convolutional block.
 
-### Dual Label Structure (Hierarchical)
+2. **Fine-Tuning:**
+   - Initially, the backbone was frozen to train only the classification head.
+   - Subsequently, we unfroze the entire network and applied a significantly lower learning rate (1e-4). This allowed the model to adjust its deep feature representations to the specific domain of plant leaves without catastrophic forgetting of the generalized ImageNet features.
 
-Standard classification treats "Tomato___Bacterial_spot" as a single label. The Dual Model splits this into two tasks:
-
-1.  **Plant Prediction:** Is it a Tomato, Potato, etc.?
-2.  **Disease Prediction:** Is it Bacterial spot, Healthy, etc.?
-
-This models the conditional probability:
-
-$$
-P(\text{Class}) \approx P(\text{Plant}) \cdot P(\text{Disease} | \text{Plant})
-$$
-
-This approach helps isolate whether the model fails at recognizing the leaf shape (Plant error) or the texture of the spot (Disease error).
-
-## 4. Evaluation Metrics
-
-Given the class imbalance, Accuracy is not sufficient. We rely on Precision, Recall, and F1 Score.
-
-**F1 Score:**
-The harmonic mean of Precision and Recall:
-
-$$
-F1 = 2 \cdot \frac{Precision \cdot Recall}{Precision + Recall}
-$$
-
-**Macro Average:**
-To treat all classes equally regardless of their size (important for our imbalanced dataset):
-
-$$
-\text{Macro } F1 = \frac{1}{N} \sum_{i=1}^{N} F1_i
-$$
+**Data-Centric Optimization**
+A key factor in achieving high convergence speed was the use of ImageNet Normalization. By normalizing input images with Mean [0.485, 0.456, 0.406] and Std [0.229, 0.224, 0.225], we aligned our data distribution with the pretrained weights. This ensured that the model's pre-learned filters for edge and color detection remained valid for our specific dataset.
