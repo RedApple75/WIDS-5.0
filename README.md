@@ -160,11 +160,20 @@ For an input image vector $x$, we apply a transformation function $T_\theta(x)$ 
 1. **Rotation Matrix ($R_\theta$):**
 
 $$
-\begin{bmatrix} x' \\ y' \end{bmatrix} = \begin{bmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{bmatrix} \begin{bmatrix} x \\ y \end{bmatrix}
+\begin{bmatrix} 
+x' \\
+y' \end{bmatrix} = 
+\begin{bmatrix}
+ \cos\theta & -\sin\theta \\
+ \sin\theta & \cos\theta 
+ \end{bmatrix} 
+ \begin{bmatrix} 
+ x \\ 
+ y 
+ \end{bmatrix}
 $$
 
    *Purpose:* Forces the model to learn rotation-invariant features (e.g., a spot is a spot regardless of orientation).
-   
 2.  **Horizontal Flip:**
     $$(x', y') = (-x, y)$$
     * *Purpose:* Eliminates directional bias from lighting conditions.
