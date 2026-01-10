@@ -38,11 +38,19 @@ To filter out low-quality data, we calculated a blur score using the variance of
 
 The Laplacian $L$ of an image $I$ is calculated via convolution with a kernel $K$:
 
-$$L(x,y) = I(x,y) * K$$
+$$
+L(x,y) = I(x,y) * K
+$$
 
 Where the kernel $K$ is typically:
 
-$$K = \begin{bmatrix} 0 & 1 & 0 \\ 1 & -4 & 1 \\ 0 & 1 & 0 \end{bmatrix}$$
+$$
+K = \begin{bmatrix} 
+0 & 1 & 0 \\ 
+1 & -4 & 1 \\ 
+0 & 1 & 0 
+\end{bmatrix}
+$$
 
 The sharpness score $S$ is the variance of the response:
 
@@ -149,10 +157,14 @@ A critical component of our pipeline is **Dynamic On-the-Fly Augmentation**. Unl
 **Mathematical Transformations**
 For an input image vector $x$, we apply a transformation function $T_\theta(x)$ where $\theta$ is sampled from a distribution.
 
-1.  **Rotation Matrix ($R_\theta$):**
-    $$\begin{bmatrix} x' \\ y' \end{bmatrix} = \begin{bmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{bmatrix} \begin{bmatrix} x \\ y \end{bmatrix}, \quad \theta \in [-20^\circ, 20^\circ]$$
-    * *Purpose:* Forces the model to learn rotation-invariant features (e.g., a spot is a spot regardless of orientation).
+1. **Rotation Matrix ($R_\theta$):**
 
+$$
+\begin{bmatrix} x' \\ y' \end{bmatrix} = \begin{bmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{bmatrix} \begin{bmatrix} x \\ y \end{bmatrix}
+$$
+
+   *Purpose:* Forces the model to learn rotation-invariant features (e.g., a spot is a spot regardless of orientation).
+   
 2.  **Horizontal Flip:**
     $$(x', y') = (-x, y)$$
     * *Purpose:* Eliminates directional bias from lighting conditions.
