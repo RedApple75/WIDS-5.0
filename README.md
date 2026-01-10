@@ -174,8 +174,11 @@ y' \end{bmatrix} =
 $$
 
    *Purpose:* Forces the model to learn rotation-invariant features (e.g., a spot is a spot regardless of orientation).
+
 2.  **Horizontal Flip:**
-    $$(x', y') = (-x, y)$$
-    * *Purpose:* Eliminates directional bias from lighting conditions.
+
+$$(x', y') = (-x, y)$$
+
+    *Purpose:* Eliminates directional bias from lighting conditions.
 
 This strategy effectively creates an infinite dataset size ($N \to \infty$), as the probability of the model seeing the exact same tensor array twice approaches zero. This is the primary reason for the minimal gap between Training Accuracy (99.99%) and Validation Accuracy (99.62%).
